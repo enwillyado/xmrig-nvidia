@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "interfaces/interface.h"
 
 #include "align.h"
 
@@ -36,10 +37,11 @@
 #define MEMORY_LITE 1048576 /* 1 MiB */
 
 
-struct cryptonight_ctx {
-    uint8_t state0[200];
-    uint8_t state1[200];
-    uint8_t memory[MEMORY];
+struct cryptonight_ctx
+{
+	uint8_t state0[200];
+	uint8_t state1[200];
+	uint8_t memory[MEMORY];
 };
 
 
@@ -51,12 +53,12 @@ class JobResult;
 class CryptoNight
 {
 public:
-    static bool hash(const Job &job, JobResult &result, cryptonight_ctx *ctx);
-    static bool init(int algo, int variant);
-    static void hash(const uint8_t *input, size_t size, uint8_t *output, cryptonight_ctx *ctx);
+	static bool hash(const Job & job, JobResult & result, cryptonight_ctx* ctx);
+	static bool init(int algo, int variant);
+	static void hash(const uint8_t* input, size_t size, uint8_t* output, cryptonight_ctx* ctx);
 
 private:
-    static bool selfTest(int algo);
+	static bool selfTest(int algo);
 };
 
 #endif /* __CRYPTONIGHT_H__ */

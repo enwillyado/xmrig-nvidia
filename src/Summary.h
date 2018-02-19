@@ -28,7 +28,7 @@
 class Summary
 {
 public:
-    static bool print();
+	static bool print();
 };
 
 

@@ -33,56 +33,131 @@
 class GpuThread
 {
 public:
-    GpuThread();
-    GpuThread(const nvid_ctx &ctx, int affinity = -1);
-    ~GpuThread();
+	GpuThread();
+	GpuThread(const nvid_ctx & ctx, int affinity = -1);
+	~GpuThread();
 
-    bool init();
-    void limit(int maxUsage, int maxThreads);
+	bool init();
+	void limit(int maxUsage, int maxThreads);
 
-    inline const char *name() const       { return m_name; }
-    inline const int *arch() const        { return m_arch; }
-    inline int affinity() const           { return m_affinity; }
-    inline int bfactor() const            { return m_bfactor; }
-    inline int blocks() const             { return m_blocks; }
-    inline int bsleep() const             { return m_bsleep; }
-    inline int clockRate() const          { return m_clockRate; } 
-    inline int index() const              { return m_index; }
-    inline int memoryClockRate() const    { return m_memoryClockRate; }
-    inline int nvmlId() const             { return m_nvmlId; }
-    inline int pciBusID() const           { return m_pciBusID; }
-    inline int pciDeviceID() const        { return m_pciDeviceID; }
-    inline int pciDomainID() const        { return m_pciDomainID; }
-    inline int smx() const                { return m_smx; }
-    inline int threadId() const           { return m_threadId; }
-    inline int threads() const            { return m_threads; }
+	inline const char* name() const
+	{
+		return m_name;
+	}
+	inline const int* arch() const
+	{
+		return m_arch;
+	}
+	inline int affinity() const
+	{
+		return m_affinity;
+	}
+	inline int bfactor() const
+	{
+		return m_bfactor;
+	}
+	inline int blocks() const
+	{
+		return m_blocks;
+	}
+	inline int bsleep() const
+	{
+		return m_bsleep;
+	}
+	inline int clockRate() const
+	{
+		return m_clockRate;
+	}
+	inline int index() const
+	{
+		return m_index;
+	}
+	inline int memoryClockRate() const
+	{
+		return m_memoryClockRate;
+	}
+	inline int nvmlId() const
+	{
+		return m_nvmlId;
+	}
+	inline int pciBusID() const
+	{
+		return m_pciBusID;
+	}
+	inline int pciDeviceID() const
+	{
+		return m_pciDeviceID;
+	}
+	inline int pciDomainID() const
+	{
+		return m_pciDomainID;
+	}
+	inline int smx() const
+	{
+		return m_smx;
+	}
+	inline int threadId() const
+	{
+		return m_threadId;
+	}
+	inline int threads() const
+	{
+		return m_threads;
+	}
 
-    inline void setAffinity(int affinity) { m_affinity = affinity; }
-    inline void setBFactor(int bfactor)   { if (bfactor >= 0 && bfactor <= 12) { m_bfactor = bfactor; } }
-    inline void setBlocks(int blocks)     { m_blocks = blocks; }
-    inline void setBSleep(int bsleep)     { m_bsleep = bsleep; }
-    inline void setIndex(int index)       { m_index = index; }
-    inline void setNvmlId(int id)         { m_nvmlId = id; }
-    inline void setThreadId(int threadId) { m_threadId = threadId; }
-    inline void setThreads(int threads)   { m_threads = threads; }
+	inline void setAffinity(int affinity)
+	{
+		m_affinity = affinity;
+	}
+	inline void setBFactor(int bfactor)
+	{
+		if(bfactor >= 0 && bfactor <= 12)
+		{
+			m_bfactor = bfactor;
+		}
+	}
+	inline void setBlocks(int blocks)
+	{
+		m_blocks = blocks;
+	}
+	inline void setBSleep(int bsleep)
+	{
+		m_bsleep = bsleep;
+	}
+	inline void setIndex(int index)
+	{
+		m_index = index;
+	}
+	inline void setNvmlId(int id)
+	{
+		m_nvmlId = id;
+	}
+	inline void setThreadId(int threadId)
+	{
+		m_threadId = threadId;
+	}
+	inline void setThreads(int threads)
+	{
+		m_threads = threads;
+	}
 
 private:
-    char m_name[256];
-    int m_affinity;
-    int m_arch[2];
-    int m_bfactor;
-    int m_blocks;
-    int m_bsleep;
-    int m_clockRate;
-    int m_index;
-    int m_memoryClockRate;
-    int m_nvmlId;
-    int m_pciBusID;
-    int m_pciDeviceID;
-    int m_pciDomainID;
-    int m_smx;
-    int m_threadId;
-    int m_threads;
+	char m_name[256];
+	int m_affinity;
+	int m_arch[2];
+	int m_bfactor;
+	int m_blocks;
+	int m_bsleep;
+	int m_clockRate;
+	int m_index;
+	int m_memoryClockRate;
+	int m_nvmlId;
+	int m_pciBusID;
+	int m_pciDeviceID;
+	int m_pciDomainID;
+	int m_smx;
+	int m_threadId;
+	int m_threads;
 };
 
 

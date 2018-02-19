@@ -45,12 +45,12 @@
 
 bool Workers::m_active = false;
 bool Workers::m_enabled = true;
-Hashrate *Workers::m_hashrate = nullptr;
-IJobResultListener *Workers::m_listener = nullptr;
+Hashrate* Workers::m_hashrate = nullptr;
+IJobResultListener* Workers::m_listener = nullptr;
 Job Workers::m_job;
-std::atomic<int> Workers::m_paused;
-std::atomic<uint64_t> Workers::m_sequence;
-std::list<Job> Workers::m_queue;
+int Workers::m_paused;
+uint64_t Workers::m_sequence;
+std::list<JobResult> Workers::m_queue;
 std::vector<Handle*> Workers::m_workers;
 uint64_t Workers::m_ticks = 0;
 uv_async_t Workers::m_async;
@@ -62,258 +62,311 @@ uv_timer_t Workers::m_timer;
 
 struct JobBaton
 {
-    uv_work_t request;
-    std::vector<Job> jobs;
-    std::vector<JobResult> results;
-    int errors = 0;
+	uv_work_t request;
+	std::vector<Job> jobs;
+	std::vector<JobResult> results;
+	int errors;
 
-    JobBaton() {
-        request.data = this;
-    }
+	JobBaton()
+	{
+		errors = 0;
+		request.data = this;
+	}
 };
 
 
 Job Workers::job()
 {
-    uv_rwlock_rdlock(&m_rwlock);
-    Job job = m_job;
-    uv_rwlock_rdunlock(&m_rwlock);
+	uv_rwlock_rdlock(&m_rwlock);
+	Job job = m_job;
+	uv_rwlock_rdunlock(&m_rwlock);
 
-    return job;
+	return job;
 }
 
 
 void Workers::printHashrate(bool detail)
 {
-    if (detail) {
-       for (const GpuThread *thread : Options::i()->threads()) {
-            m_hashrate->print(thread->threadId(), thread->index());
-        }
-    }
+	if(detail)
+	{
+		const std::vector<GpuThread*> & threads = Options::i()->threads();
+		for(size_t i = 0; i < threads.size(); ++i)
+		{
+			const GpuThread* thread = threads[i];
+			m_hashrate->print(thread->threadId(), thread->index());
+		}
+	}
 
-    m_hashrate->print();
+	m_hashrate->print();
 }
 
 
 void Workers::printHealth()
 {
-    if (!NvmlApi::isAvailable()) {
-        LOG_ERR("NVML GPU monitoring is not available");
-        return;
-    }
+	if(!NvmlApi::isAvailable())
+	{
+		LOG_ERR("NVML GPU monitoring is not available");
+		return;
+	}
 
-    Health health;
-    for (const GpuThread *thread : Options::i()->threads()) {
-        if (!NvmlApi::health(thread->nvmlId(), health)) {
-            continue;
-        }
+	Health health;
 
-        const uint32_t temp = health.temperature;
+	const std::vector<GpuThread*> & threads = Options::i()->threads();
+	for(size_t i = 0; i < threads.size(); ++i)
+	{
+		const GpuThread* thread = threads[i];
+		if(!NvmlApi::health(thread->nvmlId(), health))
+		{
+			continue;
+		}
 
-        if (health.clock && health.power) {
-            if (Options::i()->colors()) {
-                LOG_INFO("\x1B[00;35mGPU #%d: \x1B[01m%u\x1B[00;35m/\x1B[01m%u MHz\x1B[00;35m \x1B[01m%uW\x1B[00;35m %s%uC\x1B[00;35m FAN \x1B[01m%u%%",
-                    thread->index(), health.clock, health.memClock, health.power / 1000, (temp < 45 ? "\x1B[01;32m" : (temp > 65 ? "\x1B[01;31m" : "\x1B[01;33m")), temp, health.fanSpeed);
-            }
-            else {
-                LOG_INFO(" * GPU #%d: %u/%u MHz %uW %uC FAN %u%%", thread->index(), health.clock, health.memClock, health.power / 1000, health.temperature, health.fanSpeed);
-            }
+		const uint32_t temp = health.temperature;
 
-            continue;
-        }
+		if(health.clock && health.power)
+		{
+			if(Options::i()->colors())
+			{
+				/*
+				LOG_INFO("\x1B[00;35mGPU #%d: \x1B[01m%u\x1B[00;35m/\x1B[01m%u MHz\x1B[00;35m \x1B[01m%uW\x1B[00;35m %s%uC\x1B[00;35m FAN \x1B[01m%u%%",
+				         thread->index(), health.clock, health.memClock, health.power / 1000,
+				         (temp < 45 ? "\x1B[01;32m" : (temp > 65 ? "\x1B[01;31m" : "\x1B[01;33m")), temp, health.fanSpeed);
+				*/
+			}
+			else
+			{
+				LOG_INFO(" * GPU #" << thread->index() << ": " << health.clock << "/" << health.memClock << " MHz " <<
+				         (health.power / 1000) << " W " << health.temperature << "C FAN " << health.fanSpeed << "%");
+			}
 
-        if (Options::i()->colors()) {
-            LOG_INFO("\x1B[00;35mGPU #%d: %s%uC\x1B[00;35m FAN \x1B[01m%u%%",
-                thread->index(), (temp < 45 ? "\x1B[01;32m" : (temp > 65 ? "\x1B[01;31m" : "\x1B[01;33m")), temp, health.fanSpeed);
-        }
-        else {
-            LOG_INFO(" * GPU #%d: %uC FAN %u%%", thread->index(), health.temperature, health.fanSpeed);
-        }
-    }
+			continue;
+		}
+
+		if(Options::i()->colors())
+		{
+			/*
+			LOG_INFO("\x1B[00;35mGPU #%d: %s%uC\x1B[00;35m FAN \x1B[01m%u%%",
+			         thread->index(), (temp < 45 ? "\x1B[01;32m" : (temp > 65 ? "\x1B[01;31m" : "\x1B[01;33m")), temp,
+			         health.fanSpeed);
+			*/
+		}
+		else
+		{
+			LOG_INFO(" * GPU #" << thread->index() << ": " << health.temperature << "C FAN " << health.fanSpeed << "%");
+		}
+	}
 }
 
 
 void Workers::setEnabled(bool enabled)
 {
-    if (m_enabled == enabled) {
-        return;
-    }
+	if(m_enabled == enabled)
+	{
+		return;
+	}
 
-    m_enabled = enabled;
-    if (!m_active) {
-        return;
-    }
+	m_enabled = enabled;
+	if(!m_active)
+	{
+		return;
+	}
 
-    m_paused = enabled ? 0 : 1;
-    m_sequence++;
+	m_paused = enabled ? 0 : 1;
+	m_sequence++;
 }
 
 
-void Workers::setJob(const Job &job)
+void Workers::setJob(const Job & job)
 {
-    uv_rwlock_wrlock(&m_rwlock);
-    m_job = job;
-    uv_rwlock_wrunlock(&m_rwlock);
+	uv_rwlock_wrlock(&m_rwlock);
+	m_job = job;
+	uv_rwlock_wrunlock(&m_rwlock);
 
-    m_active = true;
-    if (!m_enabled) {
-        return;
-    }
+	m_active = true;
+	if(!m_enabled)
+	{
+		return;
+	}
 
-    m_sequence++;
-    m_paused = 0;
+	m_sequence++;
+	m_paused = 0;
 }
 
 
-void Workers::start(const std::vector<GpuThread*> &threads)
+void Workers::start(const std::vector<GpuThread*> & threads)
 {
-    const size_t count = threads.size();
-    m_hashrate = new Hashrate((int) count);
+	const size_t count = threads.size();
+	m_hashrate = new Hashrate((int) count);
 
-    uv_mutex_init(&m_mutex);
-    uv_rwlock_init(&m_rwlock);
+	uv_mutex_init(&m_mutex);
+	uv_rwlock_init(&m_rwlock);
 
-    m_sequence = 1;
-    m_paused   = 1;
+	m_sequence = 1;
+	m_paused   = 1;
 
-    uv_async_init(uv_default_loop(), &m_async, Workers::onResult);
-    uv_timer_init(uv_default_loop(), &m_timer);
-    uv_timer_start(&m_timer, Workers::onTick, 500, 500);
+	uv_async_init(uv_default_loop(), &m_async, Workers::onResult);
+	uv_timer_init(uv_default_loop(), &m_timer);
+	uv_timer_start(&m_timer, Workers::onTick, 500, 500);
 
-    for (size_t i = 0; i < count; ++i) {
-        Handle *handle = new Handle((int) i, threads[i], (int) count, Options::i()->algo() == Options::ALGO_CRYPTONIGHT_LITE);
-        m_workers.push_back(handle);
-        handle->start(Workers::onReady);
-    }
+	for(size_t i = 0; i < count; ++i)
+	{
+		Handle* handle = new Handle((int) i, threads[i], (int) count,
+		                            Options::i()->algo() == Options::ALGO_CRYPTONIGHT_LITE);
+		m_workers.push_back(handle);
+		handle->start(Workers::onReady);
+	}
 
-    const int printTime = Options::i()->printTime();
-    if (printTime > 0) {
-        uv_timer_init(uv_default_loop(), &m_reportTimer);
-        uv_timer_start(&m_reportTimer, Workers::onReport, (printTime + 4) * 1000, printTime * 1000);
-    }
+	const int printTime = Options::i()->printTime();
+	if(printTime > 0)
+	{
+		uv_timer_init(uv_default_loop(), &m_reportTimer);
+		uv_timer_start(&m_reportTimer, Workers::onReport, (printTime + 4) * 1000, printTime * 1000);
+	}
 }
 
 
 void Workers::stop()
 {
-    if (Options::i()->printTime() > 0) {
-        uv_timer_stop(&m_reportTimer);
-    }
+	if(Options::i()->printTime() > 0)
+	{
+		uv_timer_stop(&m_reportTimer);
+	}
 
-    uv_timer_stop(&m_timer);
-    m_hashrate->stop();
+	uv_timer_stop(&m_timer);
+	m_hashrate->stop();
 
-    uv_close(reinterpret_cast<uv_handle_t*>(&m_async), nullptr);
-    m_paused   = 0;
-    m_sequence = 0;
+	uv_close(reinterpret_cast<uv_handle_t*>(&m_async), nullptr);
+	m_paused   = 0;
+	m_sequence = 0;
 
-    for (size_t i = 0; i < m_workers.size(); ++i) {
-        m_workers[i]->join();
-    }
+	for(size_t i = 0; i < m_workers.size(); ++i)
+	{
+		m_workers[i]->join();
+	}
 }
 
 
-void Workers::submit(const Job &result)
+void Workers::submit(const Job & result)
 {
-    uv_mutex_lock(&m_mutex);
-    m_queue.push_back(result);
-    uv_mutex_unlock(&m_mutex);
+	uv_mutex_lock(&m_mutex);
+	m_queue.push_back(result);
+	uv_mutex_unlock(&m_mutex);
 
-    uv_async_send(&m_async);
+	uv_async_send(&m_async);
 }
 
 
-void Workers::onReady(void *arg)
+void Workers::onReady(void* arg)
 {
-    auto handle = static_cast<Handle*>(arg);
-    handle->setWorker(new CudaWorker(handle));
+	auto handle = static_cast<Handle*>(arg);
+	handle->setWorker(new CudaWorker(handle));
 
-    handle->worker()->start();
+	handle->worker()->start();
 }
 
 
-void Workers::onResult(uv_async_t *handle)
+void Workers::onResult(uv_async_t* handle)
 {
-    JobBaton *baton = new JobBaton();
+	JobBaton* baton = new JobBaton();
 
-    uv_mutex_lock(&m_mutex);
-    while (!m_queue.empty()) {
-        baton->jobs.push_back(std::move(m_queue.front()));
-        m_queue.pop_front();
-    }
-    uv_mutex_unlock(&m_mutex);
+	uv_mutex_lock(&m_mutex);
+	while(!m_queue.empty())
+	{
+		/*TODO
+		const JobResult & result = m_queue.front();
+		baton->jobs.push_back(result);
+		m_queue.pop_front();
+		*/
+	}
+	uv_mutex_unlock(&m_mutex);
 
-    uv_queue_work(uv_default_loop(), &baton->request,
-        [](uv_work_t* req) {
-            JobBaton *baton = static_cast<JobBaton*>(req->data);
-            cryptonight_ctx *ctx = static_cast<cryptonight_ctx*>(_mm_malloc(sizeof(cryptonight_ctx), 16));
+	uv_queue_work(uv_default_loop(), &baton->request, &onWork, &onAfterWork);
+}
 
-            for (const Job &job : baton->jobs) {
-                JobResult result(job);
+void Workers::onWork(uv_work_t* req)
+{
+	JobBaton* baton = static_cast<JobBaton*>(req->data);
+	cryptonight_ctx* ctx = static_cast<cryptonight_ctx*>(_mm_malloc(sizeof(cryptonight_ctx), 16));
 
-                if (CryptoNight::hash(job, result, ctx)) {
-                    baton->results.push_back(result);
-                }
-                else {
-                    baton->errors++;
-                }
-            }
+	for(size_t i = 0; i < baton->jobs.size(); ++i)
+	{
+		const Job & job = baton->jobs[i];
+		JobResult result(job);
 
-            _mm_free(ctx);
-        },
-        [](uv_work_t* req, int status) {
-            JobBaton *baton = static_cast<JobBaton*>(req->data);
+		if(CryptoNight::hash(job, result, ctx))
+		{
+			baton->results.push_back(result);
+		}
+		else
+		{
+			baton->errors++;
+		}
+	}
 
-            for (const JobResult &result : baton->results) {
-                m_listener->onJobResult(result);
-            }
+	_mm_free(ctx);
+}
+void Workers::onAfterWork(uv_work_t* req, int status)
+{
+	JobBaton* baton = static_cast<JobBaton*>(req->data);
 
-            if (baton->errors > 0 && !baton->jobs.empty()) {
-                LOG_ERR("GPU #%d COMPUTE ERROR", baton->jobs[0].threadId());
-            }
+	for(size_t i = 0; i < baton->results.size(); ++i)
+	{
+		const JobResult & result = baton->results[i];
+		m_listener->onJobResult(result);
+	}
 
-            delete baton;
-        }
-    );
+	if(baton->errors > 0 && !baton->jobs.empty())
+	{
+		LOG_ERR("GPU #" << baton->jobs[0].threadId() << "%d COMPUTE ERROR");
+	}
+
+	delete baton;
+}
+
+void Workers::onReport(uv_timer_t* handle)
+{
+	m_hashrate->print();
+
+	if(NvmlApi::isAvailable())
+	{
+		printHealth();
+	}
 }
 
 
-void Workers::onReport(uv_timer_t *handle)
+void Workers::onTick(uv_timer_t* handle)
 {
-    m_hashrate->print();
+	for(size_t i = 0; i < m_workers.size(); ++i)
+	{
+		Handle* handle = m_workers[i];
+		if(!handle->worker())
+		{
+			return;
+		}
 
-    if (NvmlApi::isAvailable()) {
-        printHealth();
-    }
-}
+		m_hashrate->add(handle->threadId(), handle->worker()->hashCount(), handle->worker()->timestamp());
+	}
 
-
-void Workers::onTick(uv_timer_t *handle)
-{
-    for (Handle *handle : m_workers) {
-        if (!handle->worker()) {
-            return;
-        }
-
-        m_hashrate->add(handle->threadId(), handle->worker()->hashCount(), handle->worker()->timestamp());
-    }
-
-    if ((m_ticks++ & 0xF) == 0)  {
-        m_hashrate->updateHighest();
-    }
+	if((m_ticks++ & 0xF) == 0)
+	{
+		m_hashrate->updateHighest();
+	}
 
 #   ifndef XMRIG_NO_API
-    Api::tick(m_hashrate);
+	Api::tick(m_hashrate);
 
-    if ((m_ticks++ & 0x4) == 0) {
-        std::vector<Health> records;
-        Health health;
-        for (const GpuThread *thread : Options::i()->threads()) {
-            NvmlApi::health(thread->nvmlId(), health);
-            records.push_back(health);
-        }
+	if((m_ticks++ & 0x4) == 0)
+	{
+		std::vector<Health> records;
+		Health health;
+		const std::vector<GpuThread*> & threads = Options::i()->threads();
+		for(size_t i = 0; i < threads.size(); ++i)
+		{
+			const GpuThread* thread = threads[i];
+			NvmlApi::health(thread->nvmlId(), health);
+			records.push_back(health);
+		}
 
-        Api::setHealth(records);
-    }
+		Api::setHealth(records);
+	}
 #   endif
 }

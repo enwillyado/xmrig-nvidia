@@ -24,9 +24,6 @@
 #ifndef __CUDAWORKER_H__
 #define __CUDAWORKER_H__
 
-#include <atomic>
-
-
 #include "interfaces/IWorker.h"
 #include "net/Job.h"
 #include "net/JobResult.h"
@@ -39,32 +36,38 @@ class Handle;
 class CudaWorker : public IWorker
 {
 public:
-    CudaWorker(Handle *handle);
+	CudaWorker(Handle* handle);
 
 protected:
-    inline uint64_t hashCount() const override { return m_hashCount.load(std::memory_order_relaxed); }
-    inline uint64_t timestamp() const override { return m_timestamp.load(std::memory_order_relaxed); }
+	inline uint64_t hashCount() const override
+	{
+		return m_hashCount;
+	}
+	inline uint64_t timestamp() const override
+	{
+		return m_timestamp;
+	}
 
-    void start() override;
+	void start() override;
 
 private:
-    bool resume(const Job &job);
-    void consumeJob();
-    void save(const Job &job);
-    void storeStats();
+	bool resume(const Job & job);
+	void consumeJob();
+	void save(const Job & job);
+	void storeStats();
 
-    bool m_lite;
-    const int m_id;
-    const int m_threads;
-    Job m_job;
-    Job m_pausedJob;
-    nvid_ctx m_ctx;
-    std::atomic<uint64_t> m_hashCount;
-    std::atomic<uint64_t> m_timestamp;
-    uint32_t m_nonce;
-    uint32_t m_pausedNonce;
-    uint64_t m_count;
-    uint64_t m_sequence;
+	bool m_lite;
+	const int m_id;
+	const int m_threads;
+	Job m_job;
+	Job m_pausedJob;
+	nvid_ctx m_ctx;
+	uint64_t m_hashCount;
+	uint64_t m_timestamp;
+	uint32_t m_nonce;
+	uint32_t m_pausedNonce;
+	uint64_t m_count;
+	uint64_t m_sequence;
 };
 
 

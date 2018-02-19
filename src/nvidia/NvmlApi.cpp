@@ -38,131 +38,153 @@ bool NvmlApi::m_available = false;
 
 static nvmlReturn_t(*pNvmlInit)(void) = nullptr;
 static nvmlReturn_t(*pNvmlShutdown)(void) = nullptr;
-static nvmlReturn_t(*pNvmlDeviceGetHandleByIndex)(unsigned int index, nvmlDevice_t *device) = nullptr;
-static nvmlReturn_t(*pNvmlDeviceGetTemperature)(nvmlDevice_t device, nvmlTemperatureSensors_t sensorType, unsigned int* temp) = nullptr;
+static nvmlReturn_t(*pNvmlDeviceGetHandleByIndex)(unsigned int index, nvmlDevice_t* device) = nullptr;
+static nvmlReturn_t(*pNvmlDeviceGetTemperature)(nvmlDevice_t device, nvmlTemperatureSensors_t sensorType,
+        unsigned int* temp) = nullptr;
 static nvmlReturn_t(*pNvmlDeviceGetPowerUsage)(nvmlDevice_t device, unsigned int* power) = nullptr;
 static nvmlReturn_t(*pNvmlDeviceGetFanSpeed)(nvmlDevice_t device, unsigned int* speed) = nullptr;
-static nvmlReturn_t(*pNvmlDeviceGetClockInfo)(nvmlDevice_t device, nvmlClockType_t type, unsigned int* clock) = nullptr;
-static nvmlReturn_t(*pNvmlSystemGetNVMLVersion)(char *version, unsigned int length) = nullptr;
-static nvmlReturn_t(*pNvmlDeviceGetCount)(unsigned int *deviceCount) = nullptr;
-static nvmlReturn_t(*pNvmlDeviceGetPciInfo)(nvmlDevice_t device, nvmlPciInfo_t *pci) = nullptr;
+static nvmlReturn_t(*pNvmlDeviceGetClockInfo)(nvmlDevice_t device, nvmlClockType_t type,
+        unsigned int* clock) = nullptr;
+static nvmlReturn_t(*pNvmlSystemGetNVMLVersion)(char* version, unsigned int length) = nullptr;
+static nvmlReturn_t(*pNvmlDeviceGetCount)(unsigned int* deviceCount) = nullptr;
+static nvmlReturn_t(*pNvmlDeviceGetPciInfo)(nvmlDevice_t device, nvmlPciInfo_t* pci) = nullptr;
 
 
 bool NvmlApi::init()
 {
 #   ifdef _WIN32
-    char tmp[512];
-    ExpandEnvironmentStringsA("%PROGRAMFILES%\\NVIDIA Corporation\\NVSMI\\nvml.dll", tmp, sizeof(tmp));
-    if (uv_dlopen(tmp, &nvmlLib) == -1 && uv_dlopen("nvml.dll", &nvmlLib) == -1) {
-        return false;
-    }
+	char tmp[512];
+	ExpandEnvironmentStringsA("%PROGRAMFILES%\\NVIDIA Corporation\\NVSMI\\nvml.dll", tmp, sizeof(tmp));
+	if(uv_dlopen(tmp, &nvmlLib) == -1 && uv_dlopen("nvml.dll", &nvmlLib) == -1)
+	{
+		return false;
+	}
 #   else
-    if (uv_dlopen("libnvidia-ml.so", &nvmlLib) == -1) {
-        return false;
-    }
+	if(uv_dlopen("libnvidia-ml.so", &nvmlLib) == -1)
+	{
+		return false;
+	}
 #   endif
 
-    if (uv_dlsym(&nvmlLib, "nvmlInit_v2", reinterpret_cast<void**>(&pNvmlInit)) == -1) {
-        return false;
-    }
+	if(uv_dlsym(&nvmlLib, "nvmlInit_v2", reinterpret_cast<void**>(&pNvmlInit)) == -1)
+	{
+		return false;
+	}
 
-    uv_dlsym(&nvmlLib, "nvmlShutdown", reinterpret_cast<void**>(&pNvmlShutdown));
-    uv_dlsym(&nvmlLib, "nvmlDeviceGetHandleByIndex_v2", reinterpret_cast<void**>(&pNvmlDeviceGetHandleByIndex));
-    uv_dlsym(&nvmlLib, "nvmlDeviceGetTemperature", reinterpret_cast<void**>(&pNvmlDeviceGetTemperature));
-    uv_dlsym(&nvmlLib, "nvmlDeviceGetPowerUsage", reinterpret_cast<void**>(&pNvmlDeviceGetPowerUsage));
-    uv_dlsym(&nvmlLib, "nvmlDeviceGetFanSpeed", reinterpret_cast<void**>(&pNvmlDeviceGetFanSpeed));
-    uv_dlsym(&nvmlLib, "nvmlDeviceGetClockInfo", reinterpret_cast<void**>(&pNvmlDeviceGetClockInfo));
-    uv_dlsym(&nvmlLib, "nvmlSystemGetNVMLVersion", reinterpret_cast<void**>(&pNvmlSystemGetNVMLVersion));
-    uv_dlsym(&nvmlLib, "nvmlDeviceGetCount_v2", reinterpret_cast<void**>(&pNvmlDeviceGetCount));
-    uv_dlsym(&nvmlLib, "nvmlDeviceGetPciInfo_v2", reinterpret_cast<void**>(&pNvmlDeviceGetPciInfo));
+	uv_dlsym(&nvmlLib, "nvmlShutdown", reinterpret_cast<void**>(&pNvmlShutdown));
+	uv_dlsym(&nvmlLib, "nvmlDeviceGetHandleByIndex_v2", reinterpret_cast<void**>(&pNvmlDeviceGetHandleByIndex));
+	uv_dlsym(&nvmlLib, "nvmlDeviceGetTemperature", reinterpret_cast<void**>(&pNvmlDeviceGetTemperature));
+	uv_dlsym(&nvmlLib, "nvmlDeviceGetPowerUsage", reinterpret_cast<void**>(&pNvmlDeviceGetPowerUsage));
+	uv_dlsym(&nvmlLib, "nvmlDeviceGetFanSpeed", reinterpret_cast<void**>(&pNvmlDeviceGetFanSpeed));
+	uv_dlsym(&nvmlLib, "nvmlDeviceGetClockInfo", reinterpret_cast<void**>(&pNvmlDeviceGetClockInfo));
+	uv_dlsym(&nvmlLib, "nvmlSystemGetNVMLVersion", reinterpret_cast<void**>(&pNvmlSystemGetNVMLVersion));
+	uv_dlsym(&nvmlLib, "nvmlDeviceGetCount_v2", reinterpret_cast<void**>(&pNvmlDeviceGetCount));
+	uv_dlsym(&nvmlLib, "nvmlDeviceGetPciInfo_v2", reinterpret_cast<void**>(&pNvmlDeviceGetPciInfo));
 
-    m_available = pNvmlInit() == NVML_SUCCESS;
+	m_available = pNvmlInit() == NVML_SUCCESS;
 
-    if (pNvmlSystemGetNVMLVersion) {
-        pNvmlSystemGetNVMLVersion(nvmlVerion, sizeof(nvmlVerion));
-    }
+	if(pNvmlSystemGetNVMLVersion)
+	{
+		pNvmlSystemGetNVMLVersion(nvmlVerion, sizeof(nvmlVerion));
+	}
 
-    return m_available;
+	return m_available;
 }
 
 
 void NvmlApi::release()
 {
-    if (!isAvailable() && !pNvmlShutdown) {
-        return;
-    }
+	if(!isAvailable() && !pNvmlShutdown)
+	{
+		return;
+	}
 
-    pNvmlShutdown();
+	pNvmlShutdown();
 }
 
 
-bool NvmlApi::health(int id, Health &health)
+bool NvmlApi::health(int id, Health & health)
 {
-    if (id == -1 || !isAvailable()) {
-        return false;
-    }
+	if(id == -1 || !isAvailable())
+	{
+		return false;
+	}
 
-    health.reset();
+	health.reset();
 
-    nvmlDevice_t device;
-    if (pNvmlDeviceGetHandleByIndex && pNvmlDeviceGetHandleByIndex(id, &device) != NVML_SUCCESS) {
-        return false;
-    }
+	nvmlDevice_t device;
+	if(pNvmlDeviceGetHandleByIndex && pNvmlDeviceGetHandleByIndex(id, &device) != NVML_SUCCESS)
+	{
+		return false;
+	}
 
-    if (pNvmlDeviceGetTemperature) {
-        pNvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &health.temperature);
-    }
+	if(pNvmlDeviceGetTemperature)
+	{
+		pNvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &health.temperature);
+	}
 
-    if (pNvmlDeviceGetPowerUsage) {
-        pNvmlDeviceGetPowerUsage(device, &health.power);
-    }
+	if(pNvmlDeviceGetPowerUsage)
+	{
+		pNvmlDeviceGetPowerUsage(device, &health.power);
+	}
 
-    if (pNvmlDeviceGetFanSpeed) {
-        pNvmlDeviceGetFanSpeed(device, &health.fanSpeed);
-    }
+	if(pNvmlDeviceGetFanSpeed)
+	{
+		pNvmlDeviceGetFanSpeed(device, &health.fanSpeed);
+	}
 
-    if (pNvmlDeviceGetClockInfo) {
-        pNvmlDeviceGetClockInfo(device, NVML_CLOCK_SM, &health.clock);
-        pNvmlDeviceGetClockInfo(device, NVML_CLOCK_MEM, &health.memClock);
-    }
+	if(pNvmlDeviceGetClockInfo)
+	{
+		pNvmlDeviceGetClockInfo(device, NVML_CLOCK_SM, &health.clock);
+		pNvmlDeviceGetClockInfo(device, NVML_CLOCK_MEM, &health.memClock);
+	}
 
-    return true;
+	return true;
 }
 
 
-const char *NvmlApi::version()
+const char* NvmlApi::version()
 {
-    return nvmlVerion;
+	return nvmlVerion;
 }
 
 
-void NvmlApi::bind(const std::vector<GpuThread*> &threads)
+void NvmlApi::bind(const std::vector<GpuThread*> & threads)
 {
-    if (!isAvailable() || !pNvmlDeviceGetCount || !pNvmlDeviceGetHandleByIndex || !pNvmlDeviceGetPciInfo) {
-        return;
-    }
+	if(!isAvailable() || !pNvmlDeviceGetCount || !pNvmlDeviceGetHandleByIndex || !pNvmlDeviceGetPciInfo)
+	{
+		return;
+	}
 
-    unsigned int count = 0;
-    if (pNvmlDeviceGetCount(&count) != NVML_SUCCESS) {
-        return;
-    }
+	unsigned int count = 0;
+	if(pNvmlDeviceGetCount(&count) != NVML_SUCCESS)
+	{
+		return;
+	}
 
-    for (unsigned int i = 0; i < count; i++) {
-        nvmlDevice_t device;
-        if (pNvmlDeviceGetHandleByIndex(i, &device) != NVML_SUCCESS) {
-            continue;
-        }
+	for(unsigned int i = 0; i < count; i++)
+	{
+		nvmlDevice_t device;
+		if(pNvmlDeviceGetHandleByIndex(i, &device) != NVML_SUCCESS)
+		{
+			continue;
+		}
 
-        nvmlPciInfo_t pci;
-        if (pNvmlDeviceGetPciInfo(device, &pci) != NVML_SUCCESS) {
-            continue;
-        }
+		nvmlPciInfo_t pci;
+		if(pNvmlDeviceGetPciInfo(device, &pci) != NVML_SUCCESS)
+		{
+			continue;
+		}
 
-        for (GpuThread *thread : threads) {
-            if (thread->pciBusID() == pci.bus && thread->pciDeviceID() == pci.device && thread->pciDomainID() == pci.domain) {
-                thread->setNvmlId(i);
-                break;
-            }
-        }
-    }
+		for(size_t i = 0; i < threads.size(); ++i)
+		{
+			GpuThread* thread = threads[i];
+			if(thread->pciBusID() == pci.bus && thread->pciDeviceID() == pci.device &&
+			        thread->pciDomainID() == pci.domain)
+			{
+				thread->setNvmlId(i);
+				break;
+			}
+		}
+	}
 }

@@ -20,7 +20,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+#ifndef _WIN32
 
 #include <stdlib.h>
 #include <signal.h>
@@ -36,27 +36,34 @@
 
 void App::background()
 {
-    if (!m_options->background()) {
-        return;
-    }
+	if(!m_options->background())
+	{
+		return;
+	}
 
-    int i = fork();
-    if (i < 0) {
-        exit(1);
-    }
+	int i = fork();
+	if(i < 0)
+	{
+		exit(1);
+	}
 
-    if (i > 0) {
-        exit(0);
-    }
+	if(i > 0)
+	{
+		exit(0);
+	}
 
-    i = setsid();
+	i = setsid();
 
-    if (i < 0) {
-        LOG_ERR("setsid() failed (errno = %d)", errno);
-    }
+	if(i < 0)
+	{
+		LOG_ERR("setsid() failed (errno = " << errno << ")");
+	}
 
-    i = chdir("/");
-    if (i < 0) {
-        LOG_ERR("chdir() failed (errno = %d)", errno);
-    }
+	i = chdir("/");
+	if(i < 0)
+	{
+		LOG_ERR("chdir() failed (errno = " << errno << ")");
+	}
 }
+
+#endif

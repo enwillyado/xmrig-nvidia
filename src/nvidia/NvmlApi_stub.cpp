@@ -20,7 +20,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+#ifndef _WIN32
 
 #include "nvidia/NvmlApi.h"
 
@@ -30,7 +30,7 @@ bool NvmlApi::m_available = false;
 
 bool NvmlApi::init()
 {
-    return false;
+	return false;
 }
 
 
@@ -39,18 +39,20 @@ void NvmlApi::release()
 }
 
 
-bool NvmlApi::health(int id, Health &health)
+bool NvmlApi::health(int id, Health & health)
 {
-    return false;
+	return false;
 }
 
 
-const char *NvmlApi::version()
+const char* NvmlApi::version()
 {
-    return nullptr;
+	return nullptr;
 }
 
 
-void NvmlApi::bind(const std::vector<GpuThread*> &threads)
+void NvmlApi::bind(const std::vector<GpuThread*> & threads)
 {
 }
+
+#endif

@@ -20,6 +20,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef _WIN32
 
 
 #include <pthread.h>
@@ -34,27 +35,33 @@
 void Cpu::init()
 {
 #   ifdef XMRIG_NO_LIBCPUID
-    m_totalThreads = sysconf(_SC_NPROCESSORS_CONF);
+	m_totalThreads = sysconf(_SC_NPROCESSORS_CONF);
 #   endif
 
-    initCommon();
+	initCommon();
 }
 
 
 void Cpu::setAffinity(int id, uint64_t mask)
 {
-    cpu_set_t set;
-    CPU_ZERO(&set);
+	cpu_set_t set;
+	CPU_ZERO(&set);
 
-    for (int i = 0; i < m_totalThreads; i++) {
-        if (mask & (1UL << i)) {
-            CPU_SET(i, &set);
-        }
-    }
+	for(int i = 0; i < m_totalThreads; i++)
+	{
+		if(mask & (1UL << i))
+		{
+			CPU_SET(i, &set);
+		}
+	}
 
-    if (id == -1) {
-        sched_setaffinity(0, sizeof(&set), &set);
-    } else {
-        pthread_setaffinity_np(pthread_self(), sizeof(&set), &set);
-    }
+	if(id == -1)
+	{
+		sched_setaffinity(0, sizeof(&set), &set);
+	}
+	else
+	{
+		pthread_setaffinity_np(pthread_self(), sizeof(&set), &set);
+	}
 }
+#endif

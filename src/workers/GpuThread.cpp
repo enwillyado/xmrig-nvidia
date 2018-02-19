@@ -28,44 +28,44 @@
 
 
 GpuThread::GpuThread() :
-    m_affinity(-1),
-    m_bfactor(0),
-    m_blocks(0),
-    m_bsleep(0),
-    m_clockRate(0),
-    m_index(0),
-    m_memoryClockRate(0),
-    m_nvmlId(-1),
-    m_pciBusID(0),
-    m_pciDeviceID(0),
-    m_pciDomainID(0),
-    m_smx(0),
-    m_threadId(0),
-    m_threads(0)
+	m_affinity(-1),
+	m_bfactor(0),
+	m_blocks(0),
+	m_bsleep(0),
+	m_clockRate(0),
+	m_index(0),
+	m_memoryClockRate(0),
+	m_nvmlId(-1),
+	m_pciBusID(0),
+	m_pciDeviceID(0),
+	m_pciDomainID(0),
+	m_smx(0),
+	m_threadId(0),
+	m_threads(0)
 {
-    memset(m_arch, 0, sizeof(m_arch));
-    memset(m_name, 0, sizeof(m_name));
+	memset(m_arch, 0, sizeof(m_arch));
+	memset(m_name, 0, sizeof(m_name));
 }
 
 
-GpuThread::GpuThread(const nvid_ctx &ctx, int affinity) :
-    m_affinity(affinity),
-    m_bfactor(ctx.device_bfactor),
-    m_blocks(ctx.device_blocks),
-    m_bsleep(ctx.device_bsleep),
-    m_clockRate(ctx.device_clockRate),
-    m_index(ctx.device_id),
-    m_memoryClockRate(ctx.device_memoryClockRate),
-    m_nvmlId(-1),
-    m_pciBusID(ctx.device_pciBusID),
-    m_pciDeviceID(ctx.device_pciDeviceID),
-    m_pciDomainID(ctx.device_pciDomainID),
-    m_smx(ctx.device_mpcount),
-    m_threadId(0),
-    m_threads(ctx.device_threads)
+GpuThread::GpuThread(const nvid_ctx & ctx, int affinity) :
+	m_affinity(affinity),
+	m_bfactor(ctx.device_bfactor),
+	m_blocks(ctx.device_blocks),
+	m_bsleep(ctx.device_bsleep),
+	m_clockRate(ctx.device_clockRate),
+	m_index(ctx.device_id),
+	m_memoryClockRate(ctx.device_memoryClockRate),
+	m_nvmlId(-1),
+	m_pciBusID(ctx.device_pciBusID),
+	m_pciDeviceID(ctx.device_pciDeviceID),
+	m_pciDomainID(ctx.device_pciDomainID),
+	m_smx(ctx.device_mpcount),
+	m_threadId(0),
+	m_threads(ctx.device_threads)
 {
-    memcpy(m_arch, ctx.device_arch, sizeof(m_arch));
-    strncpy(m_name, ctx.device_name, sizeof(m_name) - 1);
+	memcpy(m_arch, ctx.device_arch, sizeof(m_arch));
+	strncpy(m_name, ctx.device_name, sizeof(m_name) - 1);
 }
 
 
@@ -76,53 +76,59 @@ GpuThread::~GpuThread()
 
 bool GpuThread::init()
 {
-    if (m_index < 0 || m_blocks < -1 || m_threads < -1 || m_bfactor < 0 || m_bsleep < 0) {
-        return false;
-    }
+	if(m_index < 0 || m_blocks < -1 || m_threads < -1 || m_bfactor < 0 || m_bsleep < 0)
+	{
+		return false;
+	}
 
-    if (cuda_get_devicecount() == 0) {
-        return false;
-    }
+	if(cuda_get_devicecount() == 0)
+	{
+		return false;
+	}
 
-    nvid_ctx ctx;
-    ctx.device_id      = m_index;
-    ctx.device_blocks  = m_blocks;
-    ctx.device_threads = m_threads;
-    ctx.device_bfactor = m_bfactor;
-    ctx.device_bsleep  = m_bsleep;
+	nvid_ctx ctx;
+	ctx.device_id      = m_index;
+	ctx.device_blocks  = m_blocks;
+	ctx.device_threads = m_threads;
+	ctx.device_bfactor = m_bfactor;
+	ctx.device_bsleep  = m_bsleep;
 
-    if (cuda_get_deviceinfo(&ctx) != 1) {
-        return false;
-    }
+	if(cuda_get_deviceinfo(&ctx) != 1)
+	{
+		return false;
+	}
 
-    memcpy(m_arch, ctx.device_arch, sizeof(m_arch));
-    strncpy(m_name, ctx.device_name, sizeof(m_name) - 1);
+	memcpy(m_arch, ctx.device_arch, sizeof(m_arch));
+	strncpy(m_name, ctx.device_name, sizeof(m_name) - 1);
 
-    m_threads = ctx.device_threads;
-    m_blocks  = ctx.device_blocks;
-    m_smx     = ctx.device_mpcount;
+	m_threads = ctx.device_threads;
+	m_blocks  = ctx.device_blocks;
+	m_smx     = ctx.device_mpcount;
 
-    m_clockRate       = ctx.device_clockRate;
-    m_memoryClockRate = ctx.device_memoryClockRate;
-    m_pciBusID        = ctx.device_pciBusID;
-    m_pciDeviceID     = ctx.device_pciDeviceID;
-    m_pciDomainID     = ctx.device_pciDomainID;
+	m_clockRate       = ctx.device_clockRate;
+	m_memoryClockRate = ctx.device_memoryClockRate;
+	m_pciBusID        = ctx.device_pciBusID;
+	m_pciDeviceID     = ctx.device_pciDeviceID;
+	m_pciDomainID     = ctx.device_pciDomainID;
 
-    return true;
+	return true;
 }
 
 
 void GpuThread::limit(int maxUsage, int maxThreads)
 {
-    if (maxThreads > 0) {
-        if (m_threads > maxThreads) {
-            m_threads = maxThreads;
-        }
+	if(maxThreads > 0)
+	{
+		if(m_threads > maxThreads)
+		{
+			m_threads = maxThreads;
+		}
 
-        return;
-    }
+		return;
+	}
 
-    if (maxUsage < 100) {
-        m_threads = (int) m_threads / 100.0 * maxUsage;
-    }
+	if(maxUsage < 100)
+	{
+		m_threads = (int) m_threads / 100.0 * maxUsage;
+	}
 }

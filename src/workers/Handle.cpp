@@ -26,24 +26,24 @@
 #include "workers/GpuThread.h"
 
 
-Handle::Handle(int threadId, GpuThread *thread, int threads, bool lite) :
-    m_lite(lite),
-    m_gpuThread(thread),
-    m_threadId(threadId),
-    m_threads(threads),
-    m_worker(nullptr)
+Handle::Handle(int threadId, GpuThread* thread, int threads, bool lite) :
+	m_lite(lite),
+	m_gpuThread(thread),
+	m_threadId(threadId),
+	m_threads(threads),
+	m_worker(nullptr)
 {
-    thread->setThreadId(threadId);
+	thread->setThreadId(threadId);
 }
 
 
 void Handle::join()
 {
-    uv_thread_join(&m_thread);
+	uv_thread_join(&m_thread);
 }
 
 
-void Handle::start(void (*callback) (void *))
+void Handle::start(void (*callback)(void*))
 {
-    uv_thread_create(&m_thread, callback, this);
+	uv_thread_create(&m_thread, callback, this);
 }
